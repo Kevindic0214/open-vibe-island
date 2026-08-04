@@ -849,17 +849,27 @@ struct IslandPanelView: View {
         let providers = openedUsageProviders
 
         if providers.isEmpty == false {
-            ViewThatFits(in: .horizontal) {
-                compactUsageSummaryView(providers, usesShortTitles: false)
-                compactUsageSummaryView(providers, usesShortTitles: true)
-            }
+            usageSummaryThatFits(providers)
         } else {
             Color.clear
         }
     }
 
+    /// Renders the widest usage summary that fits, degrading from every window
+    /// down to the busiest one before falling back to abbreviated provider names.
+    private func usageSummaryThatFits(_ providers: [UsageProviderPresentation]) -> some View {
+        let showsAllWindows = model.islandUsageDisplay.showsAllWindows
+
+        return ViewThatFits(in: .horizontal) {
+            compactUsageSummaryView(providers, usesShortTitles: false, showsAllWindows: showsAllWindows)
+            compactUsageSummaryView(providers, usesShortTitles: true, showsAllWindows: showsAllWindows)
+            compactUsageSummaryView(providers, usesShortTitles: false, showsAllWindows: false)
+            compactUsageSummaryView(providers, usesShortTitles: true, showsAllWindows: false)
+        }
+    }
+
     private var openedUsageProviders: [UsageProviderPresentation] {
-        guard model.islandUsageDisplay == .compact else {
+        guard model.islandUsageDisplay.showsUsage else {
             return []
         }
 
@@ -956,11 +966,8 @@ struct IslandPanelView: View {
             Color.clear
                 .frame(maxWidth: .infinity)
         } else {
-            ViewThatFits(in: .horizontal) {
-                compactUsageSummaryView(providers, usesShortTitles: false)
-                compactUsageSummaryView(providers, usesShortTitles: true)
-            }
-            .frame(maxWidth: .infinity, alignment: alignment)
+            usageSummaryThatFits(providers)
+                .frame(maxWidth: .infinity, alignment: alignment)
         }
     }
 
@@ -1019,30 +1026,45 @@ struct IslandPanelView: View {
 
     private func compactUsageSummaryView(
         _ providers: [UsageProviderPresentation],
-        usesShortTitles: Bool
+        usesShortTitles: Bool,
+        showsAllWindows: Bool
     ) -> some View {
         HStack(spacing: 7) {
             ForEach(providers) { provider in
-                compactUsageChip(provider, usesShortTitle: usesShortTitles)
+                compactUsageChip(
+                    provider,
+                    usesShortTitle: usesShortTitles,
+                    showsAllWindows: showsAllWindows
+                )
             }
         }
         .lineLimit(1)
         .fixedSize(horizontal: true, vertical: false)
     }
 
-    private func compactUsageChip(_ provider: UsageProviderPresentation, usesShortTitle: Bool) -> some View {
+    private func compactUsageChip(
+        _ provider: UsageProviderPresentation,
+        usesShortTitle: Bool,
+        showsAllWindows: Bool
+    ) -> some View {
         HStack(spacing: 5) {
             Text(usesShortTitle ? provider.shortTitle : provider.title)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.74))
 
-            Text(provider.peakWindowLabel)
-                .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.42))
+            HStack(spacing: 7) {
+                ForEach(provider.displayedWindows(showingAllWindows: showsAllWindows)) { window in
+                    HStack(spacing: 5) {
+                        Text(window.label)
+                            .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.42))
 
-            Text("\(provider.peakUsagePercentage)%")
-                .font(.system(size: 11.5, weight: .bold, design: .monospaced))
-                .foregroundStyle(usageColor(for: provider.peakUsedPercentage))
+                        Text("\(window.roundedUsedPercentage)%")
+                            .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                            .foregroundStyle(usageColor(for: window.usedPercentage))
+                    }
+                }
+            }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
@@ -1121,16 +1143,10 @@ private struct UsageProviderPresentation: Identifiable {
         }
     }
 
-    var peakWindowLabel: String {
-        peakWindow?.label ?? ""
-    }
-
-    var peakUsedPercentage: Double {
-        peakWindow?.usedPercentage ?? 0
-    }
-
-    var peakUsagePercentage: Int {
-        peakWindow?.roundedUsedPercentage ?? 0
+    /// Windows to render in a chip: every window in detailed mode, otherwise
+    /// only the busiest one so the compact chip keeps its original footprint.
+    func displayedWindows(showingAllWindows: Bool) -> [UsageWindowPresentation] {
+        showingAllWindows ? windows : [peakWindow].compactMap { $0 }
     }
 
     var shortTitle: String {

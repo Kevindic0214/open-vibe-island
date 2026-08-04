@@ -66,8 +66,15 @@ struct IslandAppearancePreferences: Equatable, Sendable {
 enum IslandUsageDisplay: String, CaseIterable, Identifiable, Sendable {
     case hidden
     case compact
+    case detailed
 
     var id: String { rawValue }
+
+    /// Whether the opened island renders usage chips at all.
+    var showsUsage: Bool { self != .hidden }
+
+    /// Whether a usage chip lists every window instead of only the busiest one.
+    var showsAllWindows: Bool { self == .detailed }
 }
 
 enum IslandSessionStateIndicator: String, CaseIterable, Identifiable, Sendable {
