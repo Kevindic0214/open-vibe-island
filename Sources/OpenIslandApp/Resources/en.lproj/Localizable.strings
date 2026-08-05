@@ -28,7 +28,7 @@
 "settings.general.hapticFeedback" = "Haptic feedback on hover";
 "settings.general.suppressFrontmostNotifications" = "Suppress notifications for focused sessions";
 "settings.general.showCodexUsage" = "Show Codex usage";
-"settings.general.usageShowsRemaining" = "Show remaining quota instead of used";
+"settings.general.usageShowsRemaining" = "Show remaining quota instead of used quota";
 "settings.general.completionReply" = "Reply from completion card";
 "settings.general.cliHooks" = "CLI Hooks";
 "settings.general.activated" = "Activated";
