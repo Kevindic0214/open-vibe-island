@@ -118,6 +118,21 @@ struct ClaudeHooksTests {
     }
 
     @Test
+    func claudeTaskNotificationParserIgnoresUserAuthoredMarkup() throws {
+        let object = try jsonObject(from: Data("""
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": "Explain <task-notification><task-id>agent-1</task-id><tool-use-id>toolu_agent_1</tool-use-id><status>completed</status></task-notification>"
+          }
+        }
+        """.utf8))
+
+        #expect(ClaudeTaskNotificationParser.terminalNotifications(in: object).isEmpty)
+    }
+
+    @Test
     func claudeTranscriptDiscoveryStreamsTranscriptsLargerThanReadChunk() throws {
         // Pins streaming behavior across read-chunk boundaries. The
         // pre-fix `parseSession` used `String(contentsOf:)` which on
@@ -665,6 +680,102 @@ struct ClaudeHooksTests {
     }
 
     @Test
+    func claudeParentHookRemovesSubagentCompletedByTaskNotification() async throws {
+        let rootURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("open-island-claude-live-completed-subagent-\(UUID().uuidString)", isDirectory: true)
+        let transcriptURL = rootURL.appendingPathComponent("session-live.jsonl")
+        let socketURL = BridgeSocketLocation.uniqueTestURL()
+        let server = BridgeServer(socketURL: socketURL)
+
+        defer {
+            server.stop()
+            try? FileManager.default.removeItem(at: rootURL)
+        }
+
+        try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
+        try """
+        {"cwd":"/tmp/worktree","sessionId":"session-live","type":"user","message":{"role":"user","content":"Launch background agent."},"timestamp":"2026-04-03T03:20:00Z"}
+        """.write(to: transcriptURL, atomically: true, encoding: .utf8)
+
+        try server.start()
+        let observer = LocalBridgeClient(socketURL: socketURL)
+        let stream = try observer.connect()
+        defer { observer.disconnect() }
+
+        let collector = AgentEventCollector()
+        let collectionTask = Task {
+            do {
+                for try await event in stream {
+                    await collector.append(event)
+                }
+            } catch {}
+        }
+        defer { collectionTask.cancel() }
+
+        try await observer.send(.registerClient(role: .observer))
+
+        let sessionID = "claude-live-completed-subagent"
+        _ = try BridgeCommandClient(socketURL: socketURL).send(
+            .processClaudeHook(
+                ClaudeHookPayload(
+                    cwd: "/tmp/worktree",
+                    hookEventName: .userPromptSubmit,
+                    sessionID: sessionID,
+                    transcriptPath: transcriptURL.path,
+                    prompt: "Launch background agent."
+                )
+            )
+        )
+        _ = try BridgeCommandClient(socketURL: socketURL).send(
+            .processClaudeHook(
+                ClaudeHookPayload(
+                    cwd: "/tmp/worktree",
+                    hookEventName: .subagentStart,
+                    sessionID: sessionID,
+                    transcriptPath: transcriptURL.path,
+                    agentID: "agent-1",
+                    agentType: "general-purpose"
+                )
+            )
+        )
+
+        let completionLine = """
+        {"cwd":"/tmp/worktree","sessionId":"session-live","type":"user","message":{"role":"user","content":"<task-notification><task-id>agent-1</task-id><tool-use-id>toolu_agent_1</tool-use-id><status>completed</status><summary>Agent finished</summary></task-notification>"},"origin":{"kind":"task-notification"},"timestamp":"2026-04-03T03:25:00Z"}
+        """.appending("\n")
+        let transcriptHandle = try FileHandle(forWritingTo: transcriptURL)
+        try transcriptHandle.seekToEnd()
+        try transcriptHandle.write(contentsOf: Data(completionLine.utf8))
+        try transcriptHandle.close()
+
+        _ = try BridgeCommandClient(socketURL: socketURL).send(
+            .processClaudeHook(
+                ClaudeHookPayload(
+                    cwd: "/tmp/worktree",
+                    hookEventName: .preToolUse,
+                    sessionID: sessionID,
+                    transcriptPath: transcriptURL.path,
+                    toolName: "Bash",
+                    toolUseID: "toolu_parent_1"
+                )
+            )
+        )
+
+        let events = await waitForActivityEvent(
+            sessionID: sessionID,
+            summary: "Running Bash",
+            collector: collector
+        )
+        var state = SessionState()
+        for event in events {
+            state.apply(event)
+        }
+
+        let session = try #require(state.session(id: sessionID))
+        #expect(session.phase == .running)
+        #expect(session.claudeMetadata?.activeSubagents == [])
+    }
+
+    @Test
     func questionPromptAlwaysAppendsOtherFreeformOption() throws {
         let payload = ClaudeHookPayload(
             cwd: "/tmp",
@@ -792,6 +903,28 @@ private func waitForCompletedSessionEvent(
         if events.contains(where: { event in
             if case let .sessionCompleted(payload) = event {
                 return payload.sessionID == sessionID && payload.summary == "OK"
+            }
+            return false
+        }) {
+            return events
+        }
+
+        try? await Task.sleep(for: .milliseconds(10))
+    }
+
+    return await collector.snapshot()
+}
+
+private func waitForActivityEvent(
+    sessionID: String,
+    summary: String,
+    collector: AgentEventCollector
+) async -> [AgentEvent] {
+    for _ in 0..<100 {
+        let events = await collector.snapshot()
+        if events.contains(where: { event in
+            if case let .activityUpdated(payload) = event {
+                return payload.sessionID == sessionID && payload.summary == summary
             }
             return false
         }) {
