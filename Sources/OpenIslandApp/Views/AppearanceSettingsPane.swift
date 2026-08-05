@@ -1422,10 +1422,10 @@ private struct UsageDisplayPreview: View {
         HStack(spacing: 6) {
             switch option {
             case .compact:
-                usageChip("Cl", windows: [("5h", 42)], color: Color(hex: AgentTool.claudeCode.brandColorHex) ?? .orange)
-                usageChip("Cx", windows: [("7d", 13)], color: Color(hex: AgentTool.codex.brandColorHex) ?? .blue)
+                usageChip("Cl", windows: [("5h", 42)])
+                usageChip("Cx", windows: [("7d", 13)])
             case .detailed:
-                usageChip("Cl", windows: [("5h", 42), ("7d", 13)], color: Color(hex: AgentTool.claudeCode.brandColorHex) ?? .orange)
+                usageChip("Cl", windows: [("5h", 42), ("7d", 13)])
             case .hidden:
                 RoundedRectangle(cornerRadius: 2, style: .continuous)
                     .fill(V6Palette.paper.opacity(0.18))
@@ -1435,7 +1435,7 @@ private struct UsageDisplayPreview: View {
         .frame(width: 104, alignment: .center)
     }
 
-    private func usageChip(_ title: String, windows: [(label: String, value: Int)], color: Color) -> some View {
+    private func usageChip(_ title: String, windows: [(label: String, value: Int)]) -> some View {
         HStack(spacing: 6) {
             Text(title)
                 .font(.system(size: 9.5, weight: .semibold))
@@ -1447,13 +1447,23 @@ private struct UsageDisplayPreview: View {
                         .foregroundStyle(V6Palette.paper.opacity(0.42))
                     Text("\(window.value)%")
                         .font(.system(size: 9.5, weight: .bold, design: .monospaced))
-                        .foregroundStyle(color)
+                        .foregroundStyle(usageColor(for: window.value))
                 }
             }
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 3)
         .background(.white.opacity(0.055), in: Capsule())
+    }
+
+    /// Mirrors the thresholds `IslandPanelView` applies to live usage chips so
+    /// the preview reads the same as the island it is previewing.
+    private func usageColor(for percentage: Int) -> Color {
+        switch percentage {
+        case 90...: .red.opacity(0.95)
+        case 70..<90: .orange.opacity(0.95)
+        default: .green.opacity(0.95)
+        }
     }
 }
 
