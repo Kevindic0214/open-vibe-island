@@ -63,7 +63,7 @@ struct IslandAppearancePreferences: Equatable, Sendable {
     var completedStaleThreshold: IslandCompletedStaleThreshold = .fiveMinutes
 }
 
-enum IslandUsageDisplay: String, CaseIterable, Identifiable, Sendable {
+enum IslandUsageDisplay: String, CaseIterable, Identifiable, Sendable, Codable {
     case hidden
     case compact
     case detailed
