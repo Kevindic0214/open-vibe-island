@@ -579,8 +579,9 @@ struct ActiveAgentProcessDiscovery {
             }
 
             let value = String(nextLine.dropFirst()).trimmingCharacters(in: .whitespacesAndNewlines)
-            if value.hasPrefix("/") {
-                return value
+            let decoded = HexEscapedUTF8.decodeIfNeeded(value)
+            if decoded.hasPrefix("/") {
+                return decoded
             }
         }
 
