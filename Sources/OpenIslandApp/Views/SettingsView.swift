@@ -208,7 +208,10 @@ struct GeneralSettingsPane: View {
             }
 
             Section(lang.t("settings.general.behavior")) {
-                Toggle(lang.t("settings.general.autoCollapse"), isOn: .constant(true))
+                Toggle(lang.t("settings.general.keepOpenUntilDecision"), isOn: Binding(
+                    get: { model.keepNotchOpenUntilDecision },
+                    set: { model.keepNotchOpenUntilDecision = $0 }
+                ))
                 Toggle(lang.t("settings.general.showDockIcon"), isOn: Binding(
                     get: { model.showDockIcon },
                     set: { model.showDockIcon = $0 }
