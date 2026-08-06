@@ -516,6 +516,12 @@ struct ActiveAgentProcessDiscovery {
         if lowered.contains("/trae.app/") {
             return "Trae"
         }
+        // Zed ships as Zed.app / Zed Preview.app; both live under …/Zed*.app/
+        if lowered.contains("/zed.app/")
+            || lowered.contains("/zed preview.app/")
+            || lowered.hasSuffix("/zed") {
+            return "Zed"
+        }
         if lowered.contains("/qoder.app/") {
             return "Qoder"
         }

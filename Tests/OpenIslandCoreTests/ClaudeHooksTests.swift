@@ -316,6 +316,33 @@ struct ClaudeHooksTests {
         #expect(payload.defaultJumpTarget.terminalApp == "Unknown")
     }
 
+    @Test
+    func claudeInferTerminalAppRecognizesZedViaTermProgram() {
+        let payload = ClaudeHookPayload(
+            cwd: "/tmp/demo", hookEventName: .sessionStart, sessionID: "s1"
+        ).withRuntimeContext(
+            environment: ["TERM_PROGRAM": "zed"],
+            currentTTYProvider: { nil },
+            terminalLocatorProvider: { _ in (sessionID: nil, tty: nil, title: nil) }
+        )
+
+        #expect(payload.terminalApp == "Zed")
+        #expect(payload.defaultJumpTarget.terminalApp == "Zed")
+    }
+
+    @Test
+    func claudeInferTerminalAppRecognizesZedViaBundleIdentifier() {
+        let payload = ClaudeHookPayload(
+            cwd: "/tmp/demo", hookEventName: .sessionStart, sessionID: "s1"
+        ).withRuntimeContext(
+            environment: ["__CFBundleIdentifier": "dev.zed.Zed"],
+            currentTTYProvider: { nil },
+            terminalLocatorProvider: { _ in (sessionID: nil, tty: nil, title: nil) }
+        )
+
+        #expect(payload.terminalApp == "Zed")
+    }
+
     /// Verifies a Claude Desktop session is tagged `Claude.app` via the
     /// authoritative `CLAUDE_CODE_ENTRYPOINT=claude-desktop` signal. The
     /// desktop subprocess is TTY-less and invisible to process discovery, so
