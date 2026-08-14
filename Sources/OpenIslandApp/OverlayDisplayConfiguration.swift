@@ -1,6 +1,6 @@
 import AppKit
 
-struct OverlayDisplayOption: Identifiable, Equatable {
+struct OverlayDisplayOption: Identifiable, Equatable, Codable, Sendable {
     static let automaticID = "automatic"
 
     let id: String
@@ -16,7 +16,7 @@ struct OverlayDisplayOption: Identifiable, Equatable {
     }
 }
 
-struct OverlayDisplayPreferenceReconciliation: Equatable {
+struct OverlayDisplayPreferenceReconciliation: Equatable, Codable, Sendable {
     let selectionID: String
     let selectionTitle: String?
     let displayOptions: [OverlayDisplayOption]
