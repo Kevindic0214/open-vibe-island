@@ -1,19 +1,21 @@
 #!/bin/zsh
 
+# Runs the test suite with Swift Testing on Command Line Tools-only setups,
+# where plain `swift test` fails with "no such module 'Testing'". Full Xcode
+# toolchains provide Testing natively, so they use plain `swift test`.
+
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 developer_dir="$(xcode-select -p 2>/dev/null || true)"
 testing_frameworks="$developer_dir/Library/Developer/Frameworks"
 
-if [[ -z "$developer_dir" || ! -d "$testing_frameworks/Testing.framework" ]]; then
-    echo "Testing.framework was not found under the selected developer directory:" >&2
-    echo "  ${testing_frameworks:-<unknown>}" >&2
-    echo "Select Apple Command Line Tools or an Xcode installation that provides Swift Testing." >&2
-    exit 1
-fi
-
 cd "$repo_root"
+
+if [[ -z "$developer_dir" || ! -d "$testing_frameworks/Testing.framework" ]]; then
+    # Xcode toolchains bundle Swift Testing into the toolchain itself.
+    exec swift test "$@"
+fi
 
 swift test \
     --enable-swift-testing \
