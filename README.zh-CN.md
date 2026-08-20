@@ -216,11 +216,11 @@ Hooks **fail open**——如果 Open Island 没在运行，你的 agents 不受�
 
 ## Star History
 
-<a href="https://star-history.com/#Octane0411/open-vibe-island&Date">
+<a href="https://star-history.dera.page/#Octane0411/open-vibe-island&Date">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Octane0411/open-vibe-island&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Octane0411/open-vibe-island&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Octane0411/open-vibe-island&type=Date" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=Octane0411/open-vibe-island&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=Octane0411/open-vibe-island&type=Date" />
+   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=Octane0411/open-vibe-island&type=Date" />
  </picture>
 </a>
 
