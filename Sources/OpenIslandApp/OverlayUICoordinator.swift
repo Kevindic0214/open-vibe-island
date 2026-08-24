@@ -42,6 +42,12 @@ final class OverlayUICoordinator {
     @ObservationIgnored
     var ignoresPointerExitAccessor: (() -> Bool)?
 
+    /// Overrides the global cursor query so pointer-sensitive behavior stays
+    /// deterministic when the host machine's real cursor happens to hover the
+    /// overlay area (e.g. during unit tests).
+    @ObservationIgnored
+    var pointerLocationProvider: (() -> NSPoint)?
+
     @ObservationIgnored
     var harnessRuntimeMonitor: HarnessRuntimeMonitor?
 
@@ -81,6 +87,10 @@ final class OverlayUICoordinator {
 
     private var ignoresPointerExitDuringHarness: Bool {
         ignoresPointerExitAccessor?() ?? false
+    }
+
+    private var currentPointerLocation: NSPoint {
+        pointerLocationProvider?() ?? NSEvent.mouseLocation
     }
 
     private var preferredOverlayScreenID: String? {
@@ -417,7 +427,7 @@ final class OverlayUICoordinator {
             return
         }
 
-        if overlayPanelController.isPointInExpandedArea(NSEvent.mouseLocation) {
+        if overlayPanelController.isPointInExpandedArea(currentPointerLocation) {
             notePointerInsideIslandSurface()
             return
         }
@@ -448,7 +458,7 @@ final class OverlayUICoordinator {
 
     var shouldDeferTimedNotificationAutoCollapse: Bool {
         isPointerInsideIslandSurface
-            || overlayPanelController.isPointInExpandedArea(NSEvent.mouseLocation)
+            || overlayPanelController.isPointInExpandedArea(currentPointerLocation)
     }
 
     private var shouldTrackPointerInsideIslandSurface: Bool {
@@ -458,7 +468,7 @@ final class OverlayUICoordinator {
 
     private var isPointerInsideCurrentNotificationCard: Bool {
         isPointerInsideIslandSurface
-            || overlayPanelController.isPointInExpandedArea(NSEvent.mouseLocation)
+            || overlayPanelController.isPointInExpandedArea(currentPointerLocation)
     }
 
     // MARK: - Debug snapshots (overlay portion)
