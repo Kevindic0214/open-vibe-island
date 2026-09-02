@@ -856,9 +856,10 @@ struct IslandPanelView: View {
     }
 
     /// Renders the usage chips at the richest layout that fits the available
-    /// width, shedding detail one step at a time: reset countdowns first, then
-    /// the secondary windows, with the provider title abbreviated at each step
-    /// before anything is dropped.
+    /// width. In `.detailed` that ladder starts with every window and its
+    /// reset countdown, shedding detail one step at a time — countdowns
+    /// first, then the secondary windows, then the full provider title.
+    /// `.compact` skips straight to the peak-window rungs.
     @ViewBuilder
     private func adaptiveUsageSummaryView(
         _ providers: [UsageProviderPresentation]
@@ -874,18 +875,26 @@ struct IslandPanelView: View {
     private func usageSummaryLadder(
         _ providers: [UsageProviderPresentation]
     ) -> some View {
-        ViewThatFits(in: .horizontal) {
-            compactUsageSummaryView(providers, layout: .init(usesShortTitle: false, showsAllWindows: true, showsRemaining: true))
-            compactUsageSummaryView(providers, layout: .init(usesShortTitle: true, showsAllWindows: true, showsRemaining: true))
-            compactUsageSummaryView(providers, layout: .init(usesShortTitle: false, showsAllWindows: true, showsRemaining: false))
-            compactUsageSummaryView(providers, layout: .init(usesShortTitle: true, showsAllWindows: true, showsRemaining: false))
-            compactUsageSummaryView(providers, layout: .init(usesShortTitle: false, showsAllWindows: false, showsRemaining: false))
-            compactUsageSummaryView(providers, layout: .init(usesShortTitle: true, showsAllWindows: false, showsRemaining: false))
+        switch model.islandUsageDisplay {
+        case .detailed:
+            ViewThatFits(in: .horizontal) {
+                compactUsageSummaryView(providers, layout: .init(usesShortTitle: false, showsAllWindows: true, showsRemaining: true))
+                compactUsageSummaryView(providers, layout: .init(usesShortTitle: true, showsAllWindows: true, showsRemaining: true))
+                compactUsageSummaryView(providers, layout: .init(usesShortTitle: false, showsAllWindows: true, showsRemaining: false))
+                compactUsageSummaryView(providers, layout: .init(usesShortTitle: true, showsAllWindows: true, showsRemaining: false))
+                compactUsageSummaryView(providers, layout: .init(usesShortTitle: false, showsAllWindows: false, showsRemaining: false))
+                compactUsageSummaryView(providers, layout: .init(usesShortTitle: true, showsAllWindows: false, showsRemaining: false))
+            }
+        case .compact, .hidden:
+            ViewThatFits(in: .horizontal) {
+                compactUsageSummaryView(providers, layout: .init(usesShortTitle: false, showsAllWindows: false, showsRemaining: false))
+                compactUsageSummaryView(providers, layout: .init(usesShortTitle: true, showsAllWindows: false, showsRemaining: false))
+            }
         }
     }
 
     private var openedUsageProviders: [UsageProviderPresentation] {
-        guard model.islandUsageDisplay == .compact else {
+        guard model.islandUsageDisplay != .hidden else {
             return []
         }
 
