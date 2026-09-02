@@ -271,6 +271,11 @@ final class OverlayPanelController {
             model.notchOpen(reason: .click)
         } else if model.notchStatus == .opened {
             if !isPointInExpandedArea(screenLocation) {
+                // Keep the island open while a permission/question is pending
+                // when the user opted into “keep open until decision” (#547).
+                if model.shouldBlockDismissWhileAwaitingDecision {
+                    return
+                }
                 model.notchClose()
                 repostMouseDown(at: screenLocation)
             }
