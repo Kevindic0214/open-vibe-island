@@ -200,7 +200,7 @@
 "island.section.idle" = "空闲";
 "island.showAll" = "显示全部 %lld 个会话";
 "island.collapseList" = "收起列表";
-"island.usageWindowRemaining" = "%@ 剩余 %d%%";
+"island.usageWindowRemaining" = "%@ 剩余 %lld%%";
 "island.usageWaiting" = "等待用量数据";
 
 /* Island Panel - Approval */

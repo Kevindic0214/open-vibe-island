@@ -200,7 +200,7 @@
 "island.section.idle" = "閒置";
 "island.showAll" = "顯示全部 %lld 個工作階段";
 "island.collapseList" = "收起清單";
-"island.usageWindowRemaining" = "%@ 剩餘 %d%%";
+"island.usageWindowRemaining" = "%@ 剩餘 %lld%%";
 "island.usageWaiting" = "等待用量資料";
 
 /* Island Panel - Approval */

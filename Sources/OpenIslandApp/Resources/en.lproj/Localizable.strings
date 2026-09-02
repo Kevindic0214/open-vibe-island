@@ -200,7 +200,7 @@
 "island.section.idle" = "Idle";
 "island.showAll" = "Show all %lld sessions";
 "island.collapseList" = "Collapse list";
-"island.usageWindowRemaining" = "%@ %d%% left";
+"island.usageWindowRemaining" = "%@ %lld%% left";
 "island.usageWaiting" = "Usage waiting";
 
 /* Island Panel - Approval */
