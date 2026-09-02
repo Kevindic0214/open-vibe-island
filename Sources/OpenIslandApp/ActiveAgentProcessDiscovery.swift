@@ -522,6 +522,12 @@ struct ActiveAgentProcessDiscovery {
             || lowered.hasSuffix("/zed") {
             return "Zed"
         }
+        // Conductor's agents run under the conductor-runtime sidecar and the
+        // Conductor.app bundle, not a terminal.
+        if lowered.contains("/conductor.app/contents/macos/")
+            || lowered.contains("/com.conductor.app/") {
+            return "Conductor"
+        }
         if lowered.contains("/qoder.app/") {
             return "Qoder"
         }
