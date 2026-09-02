@@ -1180,7 +1180,7 @@ struct IslandPanelView: View {
 
 /// One rung of the usage-chip detail ladder. `adaptiveUsageSummaryView` walks
 /// these from richest to sparsest and renders the first that fits the lane.
-private struct UsageChipLayout {
+private struct UsageChipLayout: Sendable, Codable {
     let usesShortTitle: Bool
     let showsAllWindows: Bool
     let showsRemaining: Bool
