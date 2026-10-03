@@ -1624,6 +1624,39 @@ struct CodexSessionTrackingTests {
         #expect(discovery.lastScanDiagnostics.cacheHitCount == 0)
         #expect(appendedRecords.first?.codexMetadata?.lastUserPrompt == "Only this appended line should be read.")
     }
+
+    @Test
+    func codexRolloutDiscoveryExposesSessionMetaWorkingDirectory() throws {
+        let rootURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("open-island-discovery-cwd-\(UUID().uuidString)", isDirectory: true)
+        let rolloutDirectoryURL = rootURL.appendingPathComponent("2026/10/03", isDirectory: true)
+        let rolloutURL = rolloutDirectoryURL.appendingPathComponent("rollout-cwd.jsonl")
+        let now = Date(timeIntervalSince1970: 1_790_995_200)
+
+        try FileManager.default.createDirectory(at: rolloutDirectoryURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: rootURL) }
+
+        let cwd = "/Users/example/ms-applications"
+        try sessionMetaLine(sessionID: "codex-session-cwd", timestamp: "2026-10-03T02:00:00.000Z", cwd: cwd)
+            .appending("\n")
+            .write(to: rolloutURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.modificationDate: now], ofItemAtPath: rolloutURL.path)
+
+        let discovery = CodexRolloutDiscovery(rootURL: rootURL, fileManager: .default, maxAge: 86_400, maxFiles: 10)
+        let record = try #require(discovery.discoverRecentSessions(now: now).first)
+
+        // Rediscovery builds the Codex.app jump target from this; without it
+        // the workspace name fell back to "/".
+        #expect(record.jumpTarget == nil)
+        #expect(record.workingDirectory == cwd)
+
+        // Transient: not written to the session store.
+        let decoded = try JSONDecoder().decode(
+            CodexTrackedSessionRecord.self,
+            from: JSONEncoder().encode(record)
+        )
+        #expect(decoded.workingDirectory == nil)
+    }
 }
 
 private final class MissingTranscriptFileManager: FileManager, @unchecked Sendable {

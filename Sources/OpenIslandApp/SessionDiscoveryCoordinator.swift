@@ -496,11 +496,14 @@ final class SessionDiscoveryCoordinator {
             session.isProcessAlive = true
             // Prefer the discovered record's cwd (sourced from the rollout
             // file's session_meta) over an empty fallback.
-            let cwd = record.jumpTarget?.workingDirectory ?? ""
+            let cwd = record.jumpTarget?.workingDirectory ?? record.workingDirectory ?? ""
             if session.jumpTarget == nil {
                 session.jumpTarget = JumpTarget(
                     terminalApp: "Codex.app",
-                    workspaceName: URL(fileURLWithPath: cwd).lastPathComponent,
+                    // `URL(fileURLWithPath: "")` resolves against the app's
+                    // own cwd ("/"), so leave the name empty and let the
+                    // presentation fall back to the session title.
+                    workspaceName: cwd.isEmpty ? "" : URL(fileURLWithPath: cwd).lastPathComponent,
                     paneTitle: session.title,
                     workingDirectory: cwd.isEmpty ? nil : cwd,
                     codexThreadID: session.id

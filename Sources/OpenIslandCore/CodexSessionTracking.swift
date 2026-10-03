@@ -45,6 +45,10 @@ public struct CodexTrackedSessionRecord: Equatable, Codable, Sendable {
     public var updatedAt: Date
     public var jumpTarget: JumpTarget?
     public var codexMetadata: CodexSessionMetadata?
+    /// Rollout `session_meta.cwd` for records produced by discovery, which
+    /// carry no jump target yet. Not persisted: once a record becomes a
+    /// session, the cwd lives on its jump target.
+    public var workingDirectory: String?
 
     public init(
         sessionID: String,
@@ -55,7 +59,8 @@ public struct CodexTrackedSessionRecord: Equatable, Codable, Sendable {
         phase: SessionPhase,
         updatedAt: Date,
         jumpTarget: JumpTarget? = nil,
-        codexMetadata: CodexSessionMetadata? = nil
+        codexMetadata: CodexSessionMetadata? = nil,
+        workingDirectory: String? = nil
     ) {
         self.sessionID = sessionID
         self.title = title
@@ -66,6 +71,7 @@ public struct CodexTrackedSessionRecord: Equatable, Codable, Sendable {
         self.updatedAt = updatedAt
         self.jumpTarget = jumpTarget
         self.codexMetadata = codexMetadata
+        self.workingDirectory = workingDirectory
     }
 
     public init(session: AgentSession) {
@@ -650,7 +656,8 @@ public final class CodexRolloutDiscovery: @unchecked Sendable {
             summary: summary,
             phase: snapshot.phase,
             updatedAt: updatedAt,
-            codexMetadata: metadata
+            codexMetadata: metadata,
+            workingDirectory: sessionMeta.cwd
         )
     }
 
