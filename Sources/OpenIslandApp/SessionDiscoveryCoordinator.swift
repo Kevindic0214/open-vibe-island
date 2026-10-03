@@ -95,7 +95,13 @@ final class SessionDiscoveryCoordinator {
         let cutoff = Date.now.addingTimeInterval(-86_400)
 
         let allCodex = (try? codexSessionStore.load()) ?? []
-        let codexRecords = allCodex.filter { $0.updatedAt >= cutoff && $0.shouldRestoreToLiveState }
+        let codexRecords = allCodex.filter { record in
+            guard record.updatedAt >= cutoff, record.shouldRestoreToLiveState else { return false }
+            // Drop Codex-internal subagent threads persisted before discovery
+            // learned to skip them.
+            guard let transcriptPath = record.codexMetadata?.transcriptPath else { return true }
+            return !CodexRolloutDiscovery.isSubagentRollout(atPath: transcriptPath)
+        }
 
         let allClaude = (try? claudeSessionRegistry.load()) ?? []
         let claudeRecords = allClaude.filter { $0.updatedAt >= cutoff && $0.shouldRestoreToLiveState }

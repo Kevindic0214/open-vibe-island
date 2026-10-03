@@ -368,6 +368,7 @@ public final class CodexRolloutDiscovery: @unchecked Sendable {
         var sessionID: String
         var cwd: String
         var timestamp: Date?
+        var isSubagent = false
 
         var workspaceName: String {
             let workspace = URL(fileURLWithPath: cwd).lastPathComponent
@@ -629,7 +630,7 @@ public final class CodexRolloutDiscovery: @unchecked Sendable {
         snapshot: CodexRolloutSnapshot,
         sessionMeta: SessionMeta?
     ) -> CodexTrackedSessionRecord? {
-        guard let sessionMeta else { return nil }
+        guard let sessionMeta, !sessionMeta.isSubagent else { return nil }
 
         let summary = snapshot.summary ?? sessionMeta.defaultSummary
         let updatedAt = snapshot.updatedAt ?? sessionMeta.timestamp ?? modifiedAt
@@ -656,6 +657,43 @@ public final class CodexRolloutDiscovery: @unchecked Sendable {
 
     private static let streamingChunkSize = 64 * 1_024
 
+    /// Whether the rollout at `path` belongs to a Codex-internal subagent
+    /// thread (guardian auto-review, compaction, spawned agents, …) rather
+    /// than a user-facing conversation. Only the leading `session_meta`
+    /// line is read.
+    public static func isSubagentRollout(atPath path: String) -> Bool {
+        guard let fileHandle = FileHandle(forReadingAtPath: path) else {
+            return false
+        }
+        defer { try? fileHandle.close() }
+
+        let newline = UInt8(ascii: "\n")
+        var buffer = Data()
+        while buffer.count < maxSessionMetaLineBytes,
+              let chunk = try? fileHandle.read(upToCount: streamingChunkSize),
+              !chunk.isEmpty {
+            buffer.append(chunk)
+            if let newlineIndex = buffer.firstIndex(of: newline) {
+                buffer = buffer.prefix(upTo: newlineIndex)
+                break
+            }
+        }
+
+        guard let object = codexRolloutJSONObject(for: String(decoding: buffer, as: UTF8.self)),
+              object["type"] as? String == "session_meta" else {
+            return false
+        }
+        return isSubagentSource(object["payload"] as? [String: Any] ?? [:])
+    }
+
+    private static let maxSessionMetaLineBytes = 1_024 * 1_024
+
+    /// Codex tags internal helper threads with `source: {"subagent": …}`;
+    /// user conversations carry a plain string source (`cli`, `vscode`, …).
+    private static func isSubagentSource(_ payload: [String: Any]) -> Bool {
+        (payload["source"] as? [String: Any])?["subagent"] != nil
+    }
+
     private func parseSessionMeta(fromLine line: String) -> SessionMeta? {
         guard let object = codexRolloutJSONObject(for: line),
               object["type"] as? String == "session_meta" else {
@@ -675,7 +713,8 @@ public final class CodexRolloutDiscovery: @unchecked Sendable {
             cwd: cwd,
             timestamp: codexRolloutParseTimestamp(
                 (payload["timestamp"] as? String) ?? (object["timestamp"] as? String)
-            )
+            ),
+            isSubagent: Self.isSubagentSource(payload)
         )
     }
 

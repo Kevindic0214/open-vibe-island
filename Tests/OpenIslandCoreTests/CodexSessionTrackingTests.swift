@@ -1624,6 +1624,55 @@ struct CodexSessionTrackingTests {
         #expect(discovery.lastScanDiagnostics.cacheHitCount == 0)
         #expect(appendedRecords.first?.codexMetadata?.lastUserPrompt == "Only this appended line should be read.")
     }
+
+    @Test
+    func codexRolloutDiscoverySkipsSubagentThreads() throws {
+        let rootURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("open-island-discovery-subagent-\(UUID().uuidString)", isDirectory: true)
+        let rolloutDirectoryURL = rootURL.appendingPathComponent("2026/10/02", isDirectory: true)
+        let userRolloutURL = rolloutDirectoryURL.appendingPathComponent("rollout-user.jsonl")
+        let guardianRolloutURL = rolloutDirectoryURL.appendingPathComponent("rollout-guardian.jsonl")
+        let now = Date(timeIntervalSince1970: 1_790_954_400)
+
+        try FileManager.default.createDirectory(at: rolloutDirectoryURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: rootURL) }
+
+        let cwd = "/Users/example/project"
+        try [
+            sessionMetaLine(sessionID: "user-thread", timestamp: "2026-10-02T14:00:00.000Z", cwd: cwd),
+        ].joined(separator: "\n").appending("\n").write(to: userRolloutURL, atomically: true, encoding: .utf8)
+        try [
+            rolloutLine(
+                timestamp: "2026-10-02T14:55:13.000Z",
+                type: "session_meta",
+                payload: [
+                    "id": "guardian-thread",
+                    "timestamp": "2026-10-02T14:55:13.000Z",
+                    "cwd": cwd,
+                    "originator": "Codex Desktop",
+                    "source": ["subagent": ["other": "guardian"]],
+                    "thread_source": "guardian_review",
+                    "parent_thread_id": "user-thread",
+                ]
+            ),
+            rolloutLine(
+                timestamp: "2026-10-02T14:55:13.100Z",
+                type: "response_item",
+                payload: ["type": "compaction"]
+            ),
+        ].joined(separator: "\n").appending("\n").write(to: guardianRolloutURL, atomically: true, encoding: .utf8)
+        for url in [userRolloutURL, guardianRolloutURL] {
+            try FileManager.default.setAttributes([.modificationDate: now], ofItemAtPath: url.path)
+        }
+
+        let discovery = CodexRolloutDiscovery(rootURL: rootURL, fileManager: .default, maxAge: 86_400, maxFiles: 10)
+        let records = discovery.discoverRecentSessions(now: now)
+
+        #expect(records.map(\.sessionID) == ["user-thread"])
+        #expect(CodexRolloutDiscovery.isSubagentRollout(atPath: guardianRolloutURL.path))
+        #expect(!CodexRolloutDiscovery.isSubagentRollout(atPath: userRolloutURL.path))
+        #expect(!CodexRolloutDiscovery.isSubagentRollout(atPath: rootURL.appendingPathComponent("missing.jsonl").path))
+    }
 }
 
 private final class MissingTranscriptFileManager: FileManager, @unchecked Sendable {
